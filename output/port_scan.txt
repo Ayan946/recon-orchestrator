@@ -1,4 +1,0 @@
-
-### http://testphp.vulnweb.com ###
-Starting Nmap 7.98 ( https://nmap.org ) at 2026-03-01 17:00 +0530
-Nmap done: 0 IP addresses (0 hosts up) scanned in 0.06 seconds
