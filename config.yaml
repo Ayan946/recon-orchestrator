@@ -1,0 +1,29 @@
+target:
+  domain: testphp.vulnweb.com
+
+tools:
+  amass: true
+  nmap: true
+  nmap_ports: "1-1000"
+  httpx: true
+  httpx_threads: 50
+
+
+scanning:
+  ports: "top-1000"
+  rate_limit: 150
+  timeout: 10
+
+output:
+  base_dir: output
+  format: json
+  subdomains: output/subdomains.txt
+  alive_hosts: output/alive_hosts.txt
+  port_scan: output/port_scan.txt
+  web_services: output/web_services.txt
+  tech_detect: output/tech_detect.txt
+  report: output/report.txt
+
+behavior:
+  verbose: true
+  stop_on_error: false
