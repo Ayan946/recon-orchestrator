@@ -1,31 +1,30 @@
-def filter_signals(scan_data):
-    findings = []
+AUTH_KEYWORDS = ["login", "signin", "auth", "admin", "dashboard", "portal", "account"]
+INTERESTING_PORTS = {8080, 8443, 9090, 9200, 2375, 4848, 7001, 7002}
 
-    # ---- Interesting Ports ----
-    interesting_ports = [21, 22, 23, 25, 53, 110, 139, 445, 3306, 3389, 5432, 6379, 8080, 8443]
+
+def filter_signals(scan_data, output_file=None):
+    print("[INF] Running signal filter")
+    findings = []
 
     for host, ports in scan_data.get("ports", {}).items():
         for port in ports:
-            if port in interesting_ports:
-                findings.append({
-                    "type": "interesting_port",
-                    "host": host,
-                    "port": port,
-                    "note": "Uncommon or potentially sensitive service"
-                })
+            if port in INTERESTING_PORTS:
+                entry = f"[SIG] {host}:{port} interesting port worth investigating"
+                findings.append({"type": "interesting_port", "host": host, "port": port, "note": entry})
+                print(entry)
+                if output_file:
+                    output_file.write(entry + "\n")
 
-    # ---- Admin / Login detection ----
     for service in scan_data.get("web_services", []):
         url = service.split()[0]
+        for keyword in AUTH_KEYWORDS:
+            if keyword in url.lower():
+                entry = f"[SIG] {url} authentication surface detected"
+                findings.append({"type": "auth_surface", "url": url, "note": entry})
+                print(entry)
+                if output_file:
+                    output_file.write(entry + "\n")
+                break
 
-        keywords = ["admin", "login", "dashboard", "panel"]
-
-        for word in keywords:
-            if word in url.lower():
-                findings.append({
-                    "type": "auth_surface",
-                    "url": url,
-                    "note": "Potential authentication surface"
-                })
-
+    print(f"[INF] Found {len(findings)} signals")
     return findings

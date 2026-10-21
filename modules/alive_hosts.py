@@ -1,30 +1,23 @@
 import subprocess
 
-def filter_alive_hosts(subdomains, config):
-    if not subdomains:
-        return []
 
-    output_file = config["output"]["alive_hosts"]
-    threads = config["tools"]["httpx_threads"]
+def filter_alive_hosts(subdomains, config, output_file=None):
+    print(f"[INF] Probing {len(subdomains)} hosts for alive status")
 
     with open("/tmp/subs.txt", "w") as f:
-        for sub in subdomains:
-            f.write(f"http://{sub}\n")
-            f.write(f"http://{sub}\n")
-    cmd = [
-        "/usr/bin/httpx-toolkit",
-        "-l", "/tmp/subs.txt",
-        "-silent",
-        "-threads", str(threads)
-    ]
+        f.write("\n".join(subdomains))
 
+    cmd = ["httpx-toolkit", "-l", "/tmp/subs.txt", "-silent", "-status-code",
+           "-threads", str(config["tools"]["httpx_threads"])]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
-    alive_hosts = result.stdout.strip().splitlines()
+    alive = [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
-    with open(output_file, "w") as f:
-        for host in alive_hosts:
-            f.write(host + "\n")
+    for host in alive:
+        line = f"[ALV] {host}"
+        print(line)
+        if output_file:
+            output_file.write(line + "\n")
 
-    print(f"[+] Alive hosts found: {len(alive_hosts)}")
-    return alive_hosts
+    print(f"[INF] {len(alive)} hosts alive")
+    return alive

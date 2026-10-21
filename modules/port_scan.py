@@ -1,30 +1,32 @@
 import subprocess
+import re
 
-def scan_ports(alive_hosts, config):
-    if not alive_hosts:
-        return {}
 
-    output_file = config["output"]["port_scan"]
+def scan_ports(alive_hosts, config, output_file=None):
+    print(f"[INF] Scanning ports on {len(alive_hosts)} hosts")
+
+    results = {}
     ports = config["tools"]["nmap_ports"]
 
-    scan_results = {}
-
     for host in alive_hosts:
-        cmd = [
-            "nmap",
-            "-T4",
-            "-p", ports,
-            "--open",
-            host
-        ]
-
+        clean_host = re.sub(r"https?://", "", host.split()[0])
+        cmd = ["nmap", "-sV", "--open", "-p", ports, clean_host, "-T4"]
         result = subprocess.run(cmd, capture_output=True, text=True)
-        scan_results[host] = result.stdout
 
-    with open(output_file, "w") as f:
-        for host, data in scan_results.items():
-            f.write(f"\n### {host} ###\n")
-            f.write(data)
+        open_ports = []
+        for line in result.stdout.splitlines():
+            if "/tcp" in line and "open" in line:
+                parts = line.split()
+                port = parts[0].split("/")[0]
+                service = parts[2] if len(parts) > 2 else "unknown"
+                version = " ".join(parts[3:]) if len(parts) > 3 else ""
+                entry = f"[PORT] {clean_host}:{port} {service} {version}".strip()
+                print(entry)
+                if output_file:
+                    output_file.write(entry + "\n")
+                open_ports.append(int(port))
 
-    print(f"[+] Port scanning completed on {len(alive_hosts)} hosts")
-    return scan_results
+        results[clean_host] = open_ports
+
+    print(f"[INF] Port scanning completed")
+    return results

@@ -1,32 +1,27 @@
 import subprocess
+import re
 
-def probe_web_services(alive_hosts, config):
-    if not alive_hosts:
-        return []
 
-    output_file = config["output"]["web_services"]
-    threads = config["tools"]["httpx_threads"]
+def probe_web_services(alive_hosts, config, output_file=None):
+    print(f"[INF] Probing web services on {len(alive_hosts)} hosts")
 
     with open("/tmp/alive.txt", "w") as f:
-        for host in alive_hosts:
-            f.write(host + "\n")
+        f.write("\n".join([h.split()[0] for h in alive_hosts]))
 
-    cmd = [
-        "httpx-toolkit",
-        "-l", "/tmp/alive.txt",
-        "-silent",
-        "-status-code",
-        "-title",
-        "-threads", str(threads)
-    ]
+    cmd = ["httpx-toolkit", "-l", "/tmp/alive.txt", "-silent",
+           "-status-code", "-title", "-tech-detect", "-threads",
+           str(config["tools"]["httpx_threads"])]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
-    web_services = result.stdout.strip().splitlines()
+    services = []
+    for line in result.stdout.splitlines():
+        if line.strip():
+            entry = f"[WEB] {line.strip()}"
+            print(entry)
+            if output_file:
+                output_file.write(entry + "\n")
+            services.append(line.strip())
 
-    with open(output_file, "w") as f:
-        for service in web_services:
-            f.write(service + "\n")
-
-    print(f"[+] Web services identified: {len(web_services)}")
-    return web_services
+    print(f"[INF] Found {len(services)} web services")
+    return services

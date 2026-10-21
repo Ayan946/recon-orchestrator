@@ -1,56 +1,20 @@
 import subprocess
 from pathlib import Path
-from rich.console import Console
 
-console = Console()
 
-def enumerate_subdomains(domain, config):
-    console.print("[*] Enumerating subdomains (passive)...")
+def enumerate_subdomains(domain, config, output_file=None):
+    print(f"[INF] Starting subdomain enumeration on {domain}")
 
-    output_dir = Path(config["output"]["base_dir"])
-    output_dir.mkdir(exist_ok=True)
+    cmd = ["subfinder", "-d", domain, "-silent"]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
-    raw_output = output_dir / "amass_raw.txt"
+    subdomains = [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
-    cmd = [
-        "amass",
-        "enum",
-        "-passive",
-        "-d",
-        domain
-    ]
+    for sub in subdomains:
+        line = f"[SUB] {sub}"
+        print(line)
+        if output_file:
+            output_file.write(line + "\n")
 
-    try:
-        with open(raw_output, "w") as f:
-            subprocess.run(
-                cmd,
-                stdout=f,
-                stderr=subprocess.DEVNULL,
-                check=True,
-                timeout=60
-            )
-    except subprocess.TimeoutExpired:
-        console.print("[yellow][!] Amass timed out after 60s — using partial results[/yellow]")
-    except subprocess.CalledProcessError:
-        console.print("[red][!] Amass failed during enumeration[/red]")
-        return []
-
-    subdomains = set()
-    try:
-        with open(raw_output, "r") as f:
-            for line in f:
-                sub = line.strip()
-                if sub.endswith(domain):
-                    subdomains.add(sub)
-    except FileNotFoundError:
-        return [domain]
-
-    cleaned = sorted(subdomains)
-
-    cleaned_output = output_dir / "subdomains.txt"
-    with open(cleaned_output, "w") as f:
-        for sub in cleaned:
-            f.write(sub + "\n")
-
-    console.print(f"[green][+] Found {len(cleaned)} unique subdomains[/green]")
-    return cleaned if cleaned else [domain]
+    print(f"[INF] Found {len(subdomains)} subdomains")
+    return subdomains if subdomains else [domain]
