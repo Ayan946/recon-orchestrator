@@ -1,0 +1,17 @@
+target:
+  domain: example.com
+
+tools:
+  subfinder: true
+  nmap: true
+  nmap_ports: "1-1000"
+  httpx: true
+  httpx_threads: 50
+
+scanning:
+  rate_limit: 150
+  timeout: 10
+
+behavior:
+  verbose: false
+  stop_on_error: false
