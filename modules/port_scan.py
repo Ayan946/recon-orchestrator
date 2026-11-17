@@ -1,6 +1,13 @@
 from urllib.parse import urlparse
 
 from modules.utils import emit, run_tool
+from modules.risk_engine import CRITICAL_RISK_PORTS, HIGH_RISK_PORTS, MEDIUM_RISK_PORTS
+from modules.signal_filter import INTERESTING_PORTS
+
+# Ports risk_engine/signal_filter can classify — always scanned, even if
+# they fall outside the configured range, so a CRITICAL port above 1000
+# (e.g. 2375, 6379, 27017) is never silently skipped.
+KNOWN_PORTS = CRITICAL_RISK_PORTS | HIGH_RISK_PORTS | MEDIUM_RISK_PORTS | INTERESTING_PORTS
 
 
 def scan_ports(alive_hosts, config, output_file=None):
@@ -10,12 +17,13 @@ def scan_ports(alive_hosts, config, output_file=None):
         print("[INF] nmap disabled in config, skipping")
         return {}
 
-    ports = config["tools"]["nmap_ports"]
+    configured_ports = config["tools"]["nmap_ports"]
+    extra_ports = ",".join(str(p) for p in sorted(KNOWN_PORTS))
+    ports = f"{configured_ports},{extra_ports}"
+
     rate = config["scanning"]["rate_limit"]
     timeout = config["scanning"]["timeout"]
 
-    # httpx returns both http:// and https:// variants of the same host —
-    # dedupe by hostname so it isn't scanned twice.
     hostnames = []
     seen = set()
     for host in alive_hosts:
